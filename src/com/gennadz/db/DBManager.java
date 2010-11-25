@@ -6,9 +6,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DBManager {
 	Connection conn;
@@ -19,6 +22,31 @@ public class DBManager {
 	    conn =
 	      DriverManager.getConnection("jdbc:sqlite:test.db");
 	    stat = conn.createStatement();
+	}
+	
+	/**
+	 * Returns the url that correctly spelled
+	 * 
+	 * It must has only one point, domain and extension parts.
+	 * It mustn't have http or other prefixes
+	 * @param url url to correct
+	 * @return correct url
+	 */
+	public String createCorrectUrl(String url) {
+		//seek final point
+		int pos = url.lastIndexOf(".");
+		Integer posEnd = null;
+		//truncate last point
+		String truncatedUrl = url.substring(0, pos);
+		Pattern pattern = Pattern.compile("[^A-Za-z]");
+		Matcher matcher = pattern.matcher(truncatedUrl);
+		String result = "";
+		if (matcher.find()) {
+			posEnd = matcher.end();
+			result = url.substring(posEnd);
+		}
+		return result;
+	
 	}
 	
 	public void createTableIfNotExists() throws SQLException {
@@ -44,15 +72,24 @@ public class DBManager {
 	    conn.setAutoCommit(true);
 	}
 	
-	public void selectFromTable() throws SQLException {
-		ResultSet rs = stat.executeQuery("select * from hosts;");
-	    while (rs.next()) {
-	      System.out.println("name = " + rs.getString("name"));
-	      System.out.println("url = " + rs.getString("url"));
-	    }
-	    rs.close();
+	public void insertOrUpdate(String name, String url) {
+		
 	}
 	
+	public Map<String, String> selectFromTable(String whereClause) throws SQLException {
+		if (!whereClause.equals("")) whereClause = " "+whereClause;
+		ResultSet rs = stat.executeQuery("select * from hosts"+whereClause+";");
+		Map<String, String> result = new HashMap<String, String>();
+	    while (rs.next()) {
+	    	String name = rs.getString("name");
+	    	String value = rs.getString("url");
+	    	result.put(name, value);	    
+	    }
+	    rs.close();
+	    return result;
+	}
+	
+
 	/**
 	 * Very simple implementation of update method
 	 * 
@@ -62,38 +99,28 @@ public class DBManager {
 	 * @param whereClause
 	 * @throws SQLException 
 	 */
-	public void updateFromTable(String tableName, Map<String, Object> data, Map<String, Object> where) throws SQLException {
+	public void update(Map<String, Object> data, String where, Object whereValue) throws SQLException {
+		final String UPDATE_STATEMENT = "UPDATE hosts SET ";
 		conn.setAutoCommit(false);
 		Set<String> keySet = data.keySet();
 		Iterator it = keySet.iterator();
-		String updateClause = "";
+		String updateClause = UPDATE_STATEMENT;
 		while(it.hasNext()) {
 			String keyName = (String) it.next();
 			String valueName = (String) data.get(keyName);
-			if (updateClause.equals("")) {
+			if (updateClause.equals(UPDATE_STATEMENT)) {
 				updateClause = keyName+"="+valueName;
 			} else {
 				updateClause = ", "+keyName+"="+valueName;
 			}
 		}
 		
-		keySet = where.keySet();
-		it=keySet.iterator();
-		String whereClause = " where ";
-		while (it.hasNext()) {
-			String keyName = (String) it.next();
-			String valueName = (String) data.get(keyName);
-			
-			if (whereClause.equals(" where ")) {
-				whereClause = keyName+"="+valueName;
-			} else {
-				whereClause = ", "+keyName+"="+valueName;
-			}
-		}
-		
-		stat.executeQuery("update "+tableName+" set 'fieldName'=1 where userid=1;");
+		String whereClause = " where "+where+"="+whereValue+";";
+		updateClause += whereClause;
+		stat.executeQuery(updateClause);
 		
 		conn.commit();
+		conn.setAutoCommit(true);
 	}
 	
 	protected void finalize() {
