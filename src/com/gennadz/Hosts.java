@@ -11,20 +11,23 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Dictionary;
+import java.util.Formatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Hosts {
-	private final String hostsLocation = "C:/windows/system32/drivers/etc/hosts";
+	private final String hostsLocation = "C:/Windows/System32/drivers/etc/hosts";
 	private final String tempFileName = "tempfile.txt";
 	private String tempFileHadler;
 	private String tempFileLocation;
 	private File hostsFile;
+	private File tempFile;
 	
 	
 	public String getTempFileHadler() {
@@ -49,6 +52,7 @@ public class Hosts {
 	
 	public Hosts() {
 		hostsFile = new File(hostsLocation);
+		tempFile = new File(tempFileLocation);
 	}
 
 	/**
@@ -133,10 +137,8 @@ public class Hosts {
 	 * Deletes temp file for hosts temp storage
 	 * @return 
 	 */
-	private Boolean deleteTempFile() {
-	    // A File object to represent the filename
-	    File file = new File(tempFileName);
-
+	private Boolean deleteFile(File file) {
+	   
 	    // Make sure the file or directory exists and isn't write protected
 	    if (!file.exists())
 	      throw new IllegalArgumentException(
@@ -205,7 +207,19 @@ public class Hosts {
 	}
 	
 	private boolean isHostBlocked(String host) {
-		// TODO Auto-generated method stub
+		host = cleanHost(host);
+		Map<String, String> allHosts = getAllHosts();
+		Collection<String> keys = allHosts.keySet();
+		
+		for (String key: keys) {
+			String value = allHosts.get(key);
+			if (value.contains(host)) {
+				if (key.contains("#")) {
+					return true;
+				}
+			}
+		}
+		
 		return false;
 	}
 
@@ -228,12 +242,36 @@ public class Hosts {
 	 * @return 
 	 */
 	private String cleanHost(String host) {
-		return null;
+		
+		Pattern pattern = Pattern.compile("\\w+\\.\\w+$");
+		Matcher matcher = pattern.matcher(host);
+		if (matcher.find()) {
+			String r = matcher.group();
+			return r;
+			
+		} else return host;
+		
+		
+		
+		
 		
 	}
 	
-	private void appendHost(String host) {
-		
+	private Boolean appendHost(String host) {
+		host = cleanHost(host);
+		StringBuilder sb = new StringBuilder();
+		Formatter formatter = new Formatter(sb, Locale.US);
+		formatter.format("127.0.0.1 %1s", host);
+		formatter.flush();
+		String str = sb.toString();		
+		try {
+			writeTextToFile(hostsFile, str);
+			return true;
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return false;
+		}
 	}
 	
 	
@@ -242,7 +280,7 @@ public class Hosts {
 	 * Deletes temp file and releases all handlers
 	 */
 	protected void finalyze() {
-		deleteTempFile();
+		deleteFile(tempFile);
 		//release all handlers
 	}
 }
