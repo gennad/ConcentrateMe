@@ -206,6 +206,20 @@ public class Hosts {
 		blockHosts(hostsToBlock);
 	}
 	
+	public void unBlockHosts(Set<String> hosts) {
+		Set<String> hostsToUnBlock = new HashSet<String>();
+		for (String host: hosts) {
+			if (isContainHost(host)) {
+				hostsToUnBlock.add(host);
+			} 
+		}
+		//remove line from host
+	}
+	
+	private void removeLineFromHosts() {
+		
+	}
+	
 	private boolean isHostBlocked(String host) {
 		host = cleanHost(host);
 		Map<String, String> allHosts = getAllHosts();
