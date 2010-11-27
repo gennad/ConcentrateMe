@@ -8,13 +8,23 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Hosts {
 	private final String hostsLocation = "C:/windows/system32/drivers/etc/hosts";
 	private final String tempFileName = "tempfile.txt";
 	private String tempFileHadler;
 	private String tempFileLocation;
+	private File hostsFile;
 	
 	
 	public String getTempFileHadler() {
@@ -36,40 +46,72 @@ public class Hosts {
 	public String getHostsLocation() {
 		return hostsLocation;
 	}
+	
+	public Hosts() {
+		hostsFile = new File(hostsLocation);
+	}
 
 	/**
 	 * Gets all hosts in the file
 	 * @return 
 	 */
-	public Dictionary<String, String> getAllHosts() {
-		return null;
-		
+	public Map<String, String> getAllHosts() {
+		Map<String, String> hosts = new HashMap<String, String>();
+		try {
+			String content = readFromFile(hostsFile);
+			List<String> arContent = Arrays.asList(content.split("\n"));
+			Pattern pattern = Pattern.compile("\\d+\\.\\d+\\.\\d+\\.\\d+\\s+\\w");
+			
+			
+			for (int i = 0; i<arContent.size(); i++) {
+				String s = arContent.get(i);
+				Matcher matcher = pattern.matcher(s);
+				
+				if (matcher.find()) {
+					if (!s.contains("acme")) {
+						String[] hostAndName = s.split("\\s");
+						try {
+							String ip = hostAndName[0];
+							String name = hostAndName[1];
+							hosts.put(ip, name);
+						} catch (NullPointerException e) {
+						}
+					}
+				}
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return hosts;
 	}
 	
 	/**
 	 * Gets all proibited hosts in the file
 	 * @return
 	 */
-	public Dictionary<String, String> getProhibitedHosts() {
-		return null;
-		
+	public Map<String, String> getProhibitedHosts() {
+		Map<String, String> allHosts = getAllHosts();
+		Set<String> keys = allHosts.keySet();
+		for (String key: keys) {
+			if (!key.contains("#"));
+			allHosts.remove(key);
+		}
+		return allHosts;
 	}
 	
 	/**
 	 * Gets all allowed hosts in the file
 	 * @return
 	 */
-	public Dictionary<String, String> getAllowedHosts() {
-		return null;
-	}
-	
-	/**
-	 * Reads
-	 * @return
-	 */
-	private String[] readFile() {
-		return null;
-		
+	public Map<String, String> getAllowedHosts() {
+		Map<String, String> allHosts = getAllHosts();
+		Set<String> keys = allHosts.keySet();
+		for (String key: keys) {
+			if (key.contains("#"));
+			allHosts.remove(key);
+		}
+		return allHosts;
 	}
 	
 	/**
@@ -119,10 +161,12 @@ public class Hosts {
 	
 	/**
 	 * Writes string to file
+	 * 
+	 * Appends if it exists data
 	 * @throws FileNotFoundException 
 	 */
 	private void writeTextToFile(File file, String string) throws FileNotFoundException {
-	     FileOutputStream fos = new FileOutputStream(file);
+	     FileOutputStream fos = new FileOutputStream(file, true);
 	     PrintWriter out = new PrintWriter(fos);
 	     out.println(string);
 	     out.flush();
@@ -133,7 +177,7 @@ public class Hosts {
 	 * Reads string from file
 	 * @throws IOException 
 	 */
-	private String readStringFromFile(File file) throws IOException {
+	private String readFromFile(File file) throws IOException {
 		// input
 	     FileInputStream fis  = new FileInputStream(file);
 	     BufferedReader in = new BufferedReader
@@ -141,11 +185,58 @@ public class Hosts {
 	     String thisLine = "";
 	     StringBuilder sb = new StringBuilder();
 	     while ((thisLine = in.readLine()) != null) {
-	    	 sb.append(thisLine);
+	    	 sb.append(thisLine).append("\n");
 	     }
 	    in.close();
 	    return sb.toString();
 	}
+	
+	public void blockHosts(Set<String> hosts) {
+		Set<String> hostsToBlock = new HashSet<String>();
+		
+		for (String host: hosts) {
+			if (!isContainHost(host)) {
+				appendHost(host);
+			} else if (!isHostBlocked(host)) {
+				hostsToBlock.add(host);
+			}
+		}
+		blockHosts(hostsToBlock);
+	}
+	
+	private boolean isHostBlocked(String host) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	private Boolean isContainHost(String host) {
+		host = cleanHost(host);
+		Map<String, String> allHosts = getAllHosts();
+		Collection<String> values = allHosts.values();
+		
+		for (String value: values) {
+			if (value.contains(host)) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Removes http, www and other useless stuff
+	 * @return 
+	 */
+	private String cleanHost(String host) {
+		return null;
+		
+	}
+	
+	private void appendHost(String host) {
+		
+	}
+	
+	
 	
 	/**
 	 * Deletes temp file and releases all handlers
